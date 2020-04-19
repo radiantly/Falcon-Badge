@@ -46,7 +46,8 @@ SSD1306Wire display(0x3c, 4, 5, GEOMETRY_128_32);
 #include "fonts.h"
 
 String name;
-int totalCases = 0;
+unsigned long totalCases = 0;
+unsigned long deaths = 0;
 
 const char* ssid     = "WiFi Name";
 const char* password = "WiFi Password";
@@ -76,7 +77,18 @@ void disp_cases() {
   display.drawString(0,18, String(totalCases));
   display.display();
 }
-
+/////////////////////////////////////////////////////////////////////
+void disp_deaths() {
+  if(!deaths) return;
+  display.clear();
+  display.setTextAlignment(TEXT_ALIGN_LEFT);
+  display.setFont(Open_Sans_Regular_14);
+  display.drawString(0, 0, "Deaths ");
+  display.setFont(Orbitron_Medium_18);
+  display.drawString(0,18, String(deaths));
+  display.display();
+}
+/////////////////////////////////////////////////////////////////////
 void getInfo() {
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
@@ -97,6 +109,7 @@ void getInfo() {
       deserializeJson(doc, payload);
       
       totalCases = doc["totalCases"];
+      deaths = doc["deaths"];
       Serial.println(totalCases);
     } else {
       Serial.println(httpCode);
@@ -128,16 +141,39 @@ void setup() {
   disp_falcon();
   display.display();
 
+  getInfo();
+
   // Leaving the original falcon flag here
   Serial.println("falcon{g3t_start3d_w!th_h4rdw4r3}");
 }
 
+void toggleDisplay() {
+  static bool cases = true;
+
+  if(cases) {
+    disp_cases();
+  } else {
+    disp_deaths();
+  }
+
+  cases = cases ? false : true;
+}
 
 /////////////////////////////////////////////////////////////////////
+unsigned long last_refresh = 0;
+unsigned long last_toggle = 0;
+
 void loop() {
-  getInfo();
-  disp_cases();
-  delay(600000);
- 
+  if(millis() > last_refresh + 6000000) {
+    last_refresh = millis();
+    Serial.println("Running!");
+    getInfo();
+  }
+
+  if(millis() > last_toggle + 5000) {
+    last_toggle = millis();
+    
+    toggleDisplay();
+  }
 }
 /////////////////////////////////////////////////////////////////////
